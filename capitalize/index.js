@@ -28,11 +28,24 @@ const fetchWord = async (filePath) => {
 
   const response = await fetch(api);
   const data = await response.json();
-  return addToFile(data, filePath);
+  addToFile(data, filePath, length);
 }
 
-const addToFile = (words, filePath) => {
+const addToFile = (words, filePath, wordLength) => {
   let wordsToAdd = words.map((word) => word.charAt(0).toUpperCase() + word.slice(1));
+  // Change accented characters to their non-accented version
+  wordsToAdd = wordsToAdd.map((word) => word.normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+  // Check if the word has punctuation and remove it
+  wordsToAdd = wordsToAdd.map((word) => word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, ''));
+  // Check if the word has a number and remove it
+  wordsToAdd = wordsToAdd.map((word) => word.replace(/[0-9]/g, ''));
+  // Check if the word has a space and remove it
+  wordsToAdd = wordsToAdd.map((word) => word.replace(/\s/g, ''));
+  // Check if the word has a character that is not a letter, including accents and ñ
+  wordsToAdd = wordsToAdd.map((word) => word.replace(/[^a-zA-Z\u00C0-\u017F]/g, ''));
+  // Check if the word is the correct length
+  wordsToAdd = wordsToAdd.filter((word) => word.length === parseInt(wordLength));
+
   // Add word to json array
   fs.readFile(`../words/${filePath}`, 'utf8', (err, data) => {
     if (err) throw err;
@@ -42,14 +55,20 @@ const addToFile = (words, filePath) => {
       if (!file.includes(word)) {
         return word;
       } else {
-        console.log(`Word "${word}" already in file`);
+        // Red color
+        console.log(`\x1b[31m${word} is already in the file\x1b[0m`);
       }
     });
     // Add the words to the file
     const newFile = file.concat(wordsToAdd);
     fs.writeFile(`../words/${filePath}`, JSON.stringify(newFile), (err) => {
       if (err) throw err;
-      console.log('\x1b[32m%s\x1b[0m', `Words Added to ${filePath}`, '\x1b[0m', `${wordsToAdd}`);
+      if (wordsToAdd.length > 0) {
+        console.log('\x1b[32m%s\x1b[0m', `Words Added to ${filePath}`, '\x1b[0m', `${wordsToAdd}`);
+      } else {
+        // Yellow color
+        console.log('\x1b[33m%s\x1b[0m', `No words added to ${filePath}`);
+      }
     });
   });
 }
@@ -62,7 +81,9 @@ const addToFile = (words, filePath) => {
     choices: fileNames.map((file) => ({ title: file, value: file }))
   });
 
-  setInterval(async () => {
-    await fetchWord(response.value);
-  }, 2000);
+  if (response.value) {
+    setInterval(async () => {
+      await fetchWord(response.value);
+    }, 2000);
+  }
 })();
