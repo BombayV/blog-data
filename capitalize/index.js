@@ -73,7 +73,18 @@ const addToFile = (words, filePath, wordLength) => {
   });
 }
 
+const countWords = () => {
+  fileNames.forEach((fileName) => {
+    fs.readFile(`../words/${fileName}`, 'utf8', (err, data) => {
+      if (err) throw err;
+      const file = JSON.parse(data);
+      console.log(`${fileName} has ${file.length} words`);
+    });
+  });
+}
+
 (async () => {
+  countWords();
   const response = await prompts({
     type: 'select',
     name: 'value',
